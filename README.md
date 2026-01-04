@@ -45,11 +45,11 @@ dotnet run
 ```
 O servidor inicia, por defeito, em:
 
-HTTP: http://127.0.0.1:5038
+HTTP: http://127.0.0.1:5080
 HTTPS: https://localhost:7055
 
 ```cmd
-C:\Tools\grpcurl\grpcurl.exe -plaintext 127.0.0.1:5038 list
+C:\Tools\grpcurl\grpcurl.exe -plaintext 127.0.0.1:5080 list
 ```
 
 Criar um request.json e inserir (Exemplo):
@@ -61,20 +61,20 @@ Criar um request.json e inserir (Exemplo):
 
 Depois correr no terminal:
 ```cmd
-C:\Tools\grpcurl\grpcurl.exe -plaintext -d @ 127.0.0.1:5038 registro.RegistroService/CreateVoter < request.json
+C:\Tools\grpcurl\grpcurl.exe -plaintext -d @ 127.0.0.1:5080 registro.RegistroService/CreateVoter < request.json
 ```
 
 # 2) Executar Cliente – Registo
 ```cmd
 cd Client.Registro
-set GRPC_SERVER=http://127.0.0.1:5038
+set GRPC_SERVER=http://127.0.0.1:5080
 dotnet run
 ```
 
 # 3) Executar Cliente – Votacao
 ```cmd
 cd Client.Votacao
-set GRPC_SERVER=http://127.0.0.1:5038
+set GRPC_SERVER=http://127.0.0.1:5080
 dotnet run
 ```
 
