@@ -1,6 +1,6 @@
-﻿using Grpc.Net.Client;
-using Grpc.Core;
-using GrpcService.Protos;
+﻿using Grpc.Core;
+using Grpc.Net.Client;
+using VotingSystem.Registration;
 
 static string Ask(string label)
 {
@@ -8,16 +8,16 @@ static string Ask(string label)
     return Console.ReadLine()?.Trim() ?? "";
 }
 
-var server = Environment.GetEnvironmentVariable("GRPC_SERVER") ?? "http://127.0.0.1:5080";
+var server = Environment.GetEnvironmentVariable("GRPC_SERVER") ?? "http://localhost:9093";
 using var channel = GrpcChannel.ForAddress(server);
 
-var client = new RegistroService.RegistroServiceClient(channel);
+var client = new VoterRegistrationService.VoterRegistrationServiceClient(channel);
 
 Console.WriteLine($"[Client.Registro] Server: {server}");
 
 while (true)
 {
-    Console.WriteLine("\n1) CreateVoter  2) GetVoter  0) Exit");
+    Console.WriteLine("\n1) IssueVotingCredential  0) Exit");
     var opt = Ask("Option: ");
 
     if (opt == "0") break;
@@ -26,30 +26,15 @@ while (true)
     {
         if (opt == "1")
         {
-            var name = Ask("Name: ");
-            var doc = Ask("Document: ");
+            var cc = Ask("Citizen Card Number: ");
 
-            var reply = await client.CreateVoterAsync(new CreateVoterRequest
+            var reply = await client.IssueVotingCredentialAsync(new VoterRequest
             {
-                Name = name,
-                Document = doc
+                CitizenCardNumber = cc
             });
 
-            Console.WriteLine($"OK voterId={reply.VoterId}");
-            Console.WriteLine(reply.Message);
-        }
-        else if (opt == "2")
-        {
-            var voterId = Ask("VoterId: ");
-
-            var reply = await client.GetVoterAsync(new GetVoterRequest
-            {
-                VoterId = voterId
-            });
-
-            Console.WriteLine($"voterId={reply.VoterId}");
-            Console.WriteLine($"name={reply.Name}");
-            Console.WriteLine($"document={reply.Document}");
+            Console.WriteLine($"isEligible={reply.IsEligible}");
+            Console.WriteLine($"credential={reply.VotingCredential}");
         }
         else
         {

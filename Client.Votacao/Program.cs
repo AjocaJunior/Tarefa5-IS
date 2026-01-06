@@ -1,6 +1,6 @@
-﻿using Grpc.Net.Client;
-using Grpc.Core;
-using GrpcService.Protos;
+﻿using Grpc.Core;
+using Grpc.Net.Client;
+using VotingSystem.Voting;
 
 static string Ask(string label)
 {
@@ -8,16 +8,26 @@ static string Ask(string label)
     return Console.ReadLine()?.Trim() ?? "";
 }
 
-var server = Environment.GetEnvironmentVariable("GRPC_SERVER") ?? "http://127.0.0.1:5080";
-using var channel = GrpcChannel.ForAddress(server);
+static int AskInt(string label)
+{
+    while (true)
+    {
+        var s = Ask(label);
+        if (int.TryParse(s, out var n)) return n;
+        Console.WriteLine("Valor inválido. Tenta novamente.");
+    }
+}
 
-var client = new VotacaoService.VotacaoServiceClient(channel);
+var server = Environment.GetEnvironmentVariable("GRPC_SERVER") ?? "http://localhost:9091";
+
+using var channel = GrpcChannel.ForAddress(server);
+var client = new VotingService.VotingServiceClient(channel);
 
 Console.WriteLine($"[Client.Votacao] Server: {server}");
 
 while (true)
 {
-    Console.WriteLine("\n1) StartElection  2) CastVote  3) GetResults  0) Exit");
+    Console.WriteLine("\n1) GetCandidates  2) Vote  3) GetResults  0) Exit");
     var opt = Ask("Option: ");
 
     if (opt == "0") break;
@@ -26,65 +36,64 @@ while (true)
     {
         if (opt == "1")
         {
-            var electionId = Ask("ElectionId: ");
+            var resp = client.GetCandidates(new GetCandidatesRequest());
 
-            var reply = await client.StartElectionAsync(new StartElectionRequest
+            Console.WriteLine("\n--- Candidates ---");
+            if (resp?.Candidates == null || resp.Candidates.Count == 0)
             {
-                ElectionId = electionId
-            });
-
-            Console.WriteLine($"started={reply.Started}");
-            Console.WriteLine(reply.Message);
-        }
-        else if (opt == "2")
-        {
-            var electionId = Ask("ElectionId: ");
-            var voterId = Ask("VoterId: ");
-            var candidate = Ask("Candidate: ");
-
-            var reply = await client.CastVoteAsync(new CastVoteRequest
-            {
-                ElectionId = electionId,
-                VoterId = voterId,
-                Candidate = candidate
-            });
-
-            Console.WriteLine($"accepted={reply.Accepted}");
-            Console.WriteLine(reply.Message);
-        }
-        else if (opt == "3")
-        {
-            var electionId = Ask("ElectionId: ");
-
-            var reply = await client.GetResultsAsync(new GetResultsRequest
-            {
-                ElectionId = electionId
-            });
-
-            Console.WriteLine($"Election: {reply.ElectionId}");
-            if (reply.Results.Count == 0)
-            {
-                Console.WriteLine("(no votes yet)");
+                Console.WriteLine("(sem candidatos)");
             }
             else
             {
-                foreach (var r in reply.Results)
+                foreach (var c in resp.Candidates)
                 {
-                    Console.WriteLine($"{r.Candidate}: {r.Votes}");
+                    Console.WriteLine($"{c.Id} - {c.Name}");
+                }
+            }
+        }
+        else if (opt == "2")
+        {
+            var credential = Ask("Voting credential: ");
+            var candidateId = AskInt("Candidate id: ");
+
+            var resp = client.Vote(new VoteRequest
+            {
+                VotingCredential = credential,
+                CandidateId = candidateId
+            });
+
+            Console.WriteLine($"\nSuccess: {resp.Success}");
+            Console.WriteLine($"Message: {resp.Message}");
+        }
+        else if (opt == "3")
+        {
+            var resp = client.GetResults(new GetResultsRequest());
+
+            Console.WriteLine("\n--- Results ---");
+            if (resp?.Results == null || resp.Results.Count == 0)
+            {
+                Console.WriteLine("(sem resultados)");
+            }
+            else
+            {
+                foreach (var r in resp.Results)
+                {
+                    Console.WriteLine($"{r.Id} - {r.Name} : {r.Votes} vote(s)");
                 }
             }
         }
         else
         {
-            Console.WriteLine("Invalid option.");
+            Console.WriteLine("Opção inválida.");
         }
     }
     catch (RpcException ex)
     {
-        Console.WriteLine($"RPC Error: {ex.Status.StatusCode} - {ex.Status.Detail}");
+        Console.WriteLine($"\n[gRPC ERROR] {ex.StatusCode} - {ex.Status.Detail}");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error: {ex.Message}");
+        Console.WriteLine($"\n[ERROR] {ex.Message}");
     }
 }
+
